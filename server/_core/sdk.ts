@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@shared/_core/errors";
+import { ForbiddenError } from "../../shared/_core/errors";
 import type { Request } from "express";
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import type { User } from "../../drizzle/schema";
