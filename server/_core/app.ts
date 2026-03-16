@@ -1,4 +1,5 @@
 import express from "express";
+import type { Request, Response } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -17,7 +18,7 @@ export function createApiApp() {
     })
   );
 
-  app.get("/api/health", (_req, res) => {
+  app.get("/api/health", (_req: Request, res: Response) => {
     res.status(200).json({ ok: true });
   });
 

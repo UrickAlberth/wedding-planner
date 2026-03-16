@@ -1,12 +1,13 @@
 import { ForbiddenError } from "@shared/_core/errors";
 import type { Request } from "express";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
 import { supabase } from "./supabase";
 class SDKServer {
   private getBearerToken(req: Request): string | null {
-    const header = req.headers.authorization;
+    const header = req.get("authorization");
     if (!header) return null;
     if (!header.startsWith("Bearer ")) return null;
 
@@ -20,7 +21,13 @@ class SDKServer {
       throw ForbiddenError("Missing bearer token");
     }
 
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    const authClient = supabase.auth as unknown as {
+      getUser: (
+        jwt: string
+      ) => Promise<{ data: { user: SupabaseAuthUser | null }; error: unknown }>;
+    };
+
+    const { data: authData, error: authError } = await authClient.getUser(token);
     if (authError || !authData.user) {
       throw ForbiddenError("Invalid Supabase token");
     }
