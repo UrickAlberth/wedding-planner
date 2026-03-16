@@ -1,0 +1,1 @@
+ALTER TABLE `expenses` MODIFY COLUMN `totalValue` decimal(10,2) NOT NULL DEFAULT '0';

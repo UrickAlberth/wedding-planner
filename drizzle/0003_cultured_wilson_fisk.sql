@@ -1,0 +1,1 @@
+ALTER TABLE `expenses` ADD `paymentStartDate` varchar(10) NOT NULL;
