@@ -4,7 +4,8 @@
 
 1. Crie um projeto no Supabase.
 2. Abra SQL Editor e rode o conteúdo de supabase/schema.sql.
-3. Em Project Settings > API, copie:
+3. Se o banco ja existe com schema legado (agenda_items, tasks.done, guests.owner_side etc), rode tambem supabase/migrate_legacy_schema_to_shared.sql.
+4. Em Project Settings > API, copie:
    - Project URL
    - service_role key
 
@@ -40,9 +41,10 @@ Este repositorio ja possui configuracao de Vercel em vercel.json:
 
 1. Conecte o repositorio na Vercel.
 2. Framework: Other.
-3. Build command: pnpm build.
-4. Output directory: dist/public.
-5. Deploy.
+3. Install command: pnpm install --no-frozen-lockfile.
+4. Build command: pnpm build.
+5. Output directory: dist/public.
+6. Deploy.
 
 ## 6) Testes rapidos apos deploy
 

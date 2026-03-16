@@ -76,87 +76,85 @@ function AppContent() {
   };
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: 'oklch(0.97 0.012 75)' }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <AppHeader />
+    <WeddingProvider>
+      <div
+        className="min-h-screen"
+        style={{ backgroundColor: 'oklch(0.97 0.012 75)' }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Header */}
+          <AppHeader />
 
-        {/* Countdown */}
-        <CountdownSection />
+          {/* Countdown */}
+          <CountdownSection />
 
-        {/* Main layout */}
-        <div className="flex gap-6">
-          {/* Sidebar — desktop */}
-          <aside className="hidden lg:block w-52 shrink-0">
-            <SideNav active={activeSection} onChange={setActiveSection} />
-          </aside>
+          {/* Main layout */}
+          <div className="flex gap-6">
+            {/* Sidebar — desktop */}
+            <aside className="hidden lg:block w-52 shrink-0">
+              <SideNav active={activeSection} onChange={setActiveSection} />
+            </aside>
 
-          {/* Main content */}
-          <main className="flex-1 min-w-0">
-            {/* Mobile nav toggle */}
-            <div className="lg:hidden flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-semibold" style={{ color: 'oklch(0.28 0.04 40)' }}>
-                {sectionTitles[activeSection]}
-              </h2>
-              <button
-                onClick={() => setMobileNavOpen(o => !o)}
-                className="p-2 rounded-xl transition-all"
-                style={{ backgroundColor: 'oklch(0.93 0.025 20)', color: 'oklch(0.45 0.07 20)' }}
-              >
-                {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
-
-            {/* Mobile nav dropdown */}
-            <AnimatePresence>
-              {mobileNavOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="lg:hidden mb-4 overflow-hidden"
+            {/* Main content */}
+            <main className="flex-1 min-w-0">
+              {/* Mobile nav toggle */}
+              <div className="lg:hidden flex items-center justify-between mb-4">
+                <h2 className="font-display text-xl font-semibold" style={{ color: 'oklch(0.28 0.04 40)' }}>
+                  {sectionTitles[activeSection]}
+                </h2>
+                <button
+                  onClick={() => setMobileNavOpen(o => !o)}
+                  className="p-2 rounded-xl transition-all"
+                  style={{ backgroundColor: 'oklch(0.93 0.025 20)', color: 'oklch(0.45 0.07 20)' }}
                 >
-                  <SideNav
-                    active={activeSection}
-                    onChange={s => { setActiveSection(s); setMobileNavOpen(false); }}
-                  />
+                  {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
+              </div>
+
+              {/* Mobile nav dropdown */}
+              <AnimatePresence>
+                {mobileNavOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="lg:hidden mb-4 overflow-hidden"
+                  >
+                    <SideNav
+                      active={activeSection}
+                      onChange={s => { setActiveSection(s); setMobileNavOpen(false); }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Section content */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeSection}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {renderSection()}
                 </motion.div>
-              )}
-            </AnimatePresence>
+              </AnimatePresence>
+            </main>
+          </div>
 
-            {/* Section content */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeSection}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25 }}
-              >
-                {renderSection()}
-              </motion.div>
-            </AnimatePresence>
-          </main>
+          {/* Footer */}
+          <footer className="mt-10 pt-6 text-center" style={{ borderTop: '1px solid oklch(0.88 0.02 60)' }}>
+            <p className="font-accent italic text-sm" style={{ color: 'oklch(0.65 0.03 40)' }}>
+              Feito com amor para o dia mais especial ♥
+            </p>
+          </footer>
         </div>
-
-        {/* Footer */}
-        <footer className="mt-10 pt-6 text-center" style={{ borderTop: '1px solid oklch(0.88 0.02 60)' }}>
-          <p className="font-accent italic text-sm" style={{ color: 'oklch(0.65 0.03 40)' }}>
-            Feito com amor para o dia mais especial ♥
-          </p>
-        </footer>
       </div>
-    </div>
+    </WeddingProvider>
   );
 }
 
 export default function Home() {
-  return (
-    <WeddingProvider>
-      <AppContent />
-    </WeddingProvider>
-  );
+  return <AppContent />;
 }
