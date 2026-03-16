@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1773680772171,
+      "tag": "0000_ordinary_hellcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1773680854519,
+      "tag": "0001_fancy_mordo",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773680965263,
+      "tag": "0002_steep_eternity",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1773682556531,
+      "tag": "0003_cultured_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1773690064592,
+      "tag": "0004_previous_masked_marvel",
+      "breakpoints": true
+    }
+  ]
+}
