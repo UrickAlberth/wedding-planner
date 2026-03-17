@@ -14,17 +14,45 @@ class SDKServer {
     return token.length > 0 ? token : null;
   }
 
+  private async ensurePrivateSharedUser(openId: string): Promise<User> {
+    const signedInAt = new Date();
+    let user = await db.getUserByOpenId(openId);
+
+    if (!user) {
+      await db.upsertUser({
+        openId,
+        name: "Nosso Casamento",
+        email: null,
+        loginMethod: "private-shared",
+        role: openId === ENV.ownerOpenId ? "admin" : "user",
+        lastSignedIn: signedInAt,
+      });
+      user = await db.getUserByOpenId(openId);
+    }
+
+    if (!user) {
+      throw ForbiddenError("User not found");
+    }
+
+    await db.upsertUser({
+      openId: user.openId,
+      lastSignedIn: signedInAt,
+    });
+
+    return user;
+  }
+
   async authenticateRequest(req: Request): Promise<User> {
     const token = this.getBearerToken(req);
     if (!token) {
-      throw ForbiddenError("Missing bearer token");
+      return this.ensurePrivateSharedUser(ENV.ownerOpenId || "private-shared-owner");
     }
 
     const decodedToken = await getFirebaseAdminAuth()
       .verifyIdToken(token)
       .catch(() => null);
     if (!decodedToken) {
-      throw ForbiddenError("Invalid Firebase token");
+      return this.ensurePrivateSharedUser(ENV.ownerOpenId || "private-shared-owner");
     }
 
     const sessionUserId = decodedToken.uid;
@@ -50,7 +78,7 @@ class SDKServer {
     }
 
     if (!user) {
-      throw ForbiddenError("User not found");
+      return this.ensurePrivateSharedUser(ENV.ownerOpenId || sessionUserId);
     }
 
     await db.upsertUser({
