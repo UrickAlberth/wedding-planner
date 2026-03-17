@@ -1,5 +1,10 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
+import { firebaseAuth } from "@/lib/firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -22,37 +27,21 @@ export default function Login() {
 
     try {
       if (mode === "register") {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const credentials = await createUserWithEmailAndPassword(
+          firebaseAuth,
           email,
-          password,
-          options: {
-            data: {
-              name,
-            },
-          },
-        });
+          password
+        );
 
-        if (signUpError) {
-          throw signUpError;
-        }
-
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) {
-          throw signInError;
+        if (name.trim()) {
+          await updateProfile(credentials.user, { displayName: name.trim() });
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        await signInWithEmailAndPassword(
+          firebaseAuth,
           email,
-          password,
-        });
-
-        if (signInError) {
-          throw signInError;
-        }
+          password
+        );
       }
 
       await refresh();
@@ -81,7 +70,7 @@ export default function Login() {
           {mode === "login" ? "Entrar" : "Criar conta"}
         </h1>
         <p className="text-sm mb-5" style={{ color: "oklch(0.55 0.03 40)" }}>
-          Autenticacao via Supabase
+          Autenticacao via Firebase
         </p>
 
         <div className="space-y-3">

@@ -6,7 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { LOGIN_PATH } from "./const";
-import { supabase } from "./lib/supabase";
+import { firebaseAuth } from "./lib/firebase";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -44,10 +44,7 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       async fetch(input, init) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        const token = await firebaseAuth.currentUser?.getIdToken();
         const headers = new Headers(init?.headers);
 
         if (token) {

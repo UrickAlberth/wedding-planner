@@ -7,366 +7,388 @@ import {
   InsertWedding,
   User,
 } from "../drizzle/schema";
+import type {
+  QueryDocumentSnapshot,
+  Transaction,
+} from "firebase-admin/firestore";
+import { Timestamp } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
 import { nanoid } from "nanoid";
 import { ENV } from "./_core/env";
-import { supabase } from "./_core/supabase";
+import { firebaseAdminApp } from "./_core/firebaseAdmin";
 
-type DbUser = {
+type UserDoc = {
   id: number;
-  open_id: string;
+  openId: string;
   name: string | null;
   email: string | null;
-  login_method: string | null;
+  loginMethod: string | null;
   role: "user" | "admin";
-  created_at: string;
-  updated_at: string;
-  last_signed_in: string;
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
+  lastSignedIn: Date | Timestamp;
 };
 
-type DbWedding = {
+type WeddingDoc = {
   id: number;
-  user_id: number;
-  invite_code: string;
-  bride_name: string;
-  groom_name: string;
-  wedding_date: string;
-  created_at: string;
-  updated_at: string;
+  userId: number;
+  inviteCode: string;
+  brideName: string;
+  groomName: string;
+  weddingDate: Date | Timestamp;
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
 };
 
-type DbWeddingMember = {
-  wedding_id: number;
-  user_id: number;
+type WeddingMemberDoc = {
+  userId: number;
+  weddingId: number;
   role: "owner" | "member";
-  created_at: string;
+  createdAt: Date | Timestamp;
 };
 
-type DbEvent = {
+type EventDoc = {
   id: number;
-  wedding_id: number;
+  weddingId: number;
   title: string;
   date: string;
   time: string;
   description: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
 };
 
-type DbTask = {
+type TaskDoc = {
   id: number;
-  wedding_id: number;
+  weddingId: number;
   text: string;
   completed: boolean;
-  created_at: string;
-  updated_at: string;
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
 };
 
-type DbGuest = {
+type GuestDoc = {
   id: number;
-  wedding_id: number;
+  weddingId: number;
   name: string;
   side: "noiva" | "noivo";
   role: string;
   confirmed: boolean;
   present: boolean;
-  created_at: string;
-  updated_at: string;
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
 };
 
-type DbExpense = {
+type ExpenseDoc = {
   id: number;
-  wedding_id: number;
+  weddingId: number;
   item: string;
-  total_value: string;
-  payment_method: string;
-  entry_value: string;
-  entry_installments: number;
-  entry_start_date: string;
+  totalValue: string;
+  paymentMethod: string;
+  entryValue: string;
+  entryInstallments: number;
+  entryStartDate: string;
   installments: number;
-  payment_start_date: string;
-  created_at: string;
-  updated_at: string;
+  paymentStartDate: string;
+  createdAt: Date | Timestamp;
+  updatedAt: Date | Timestamp;
 };
 
-function toDate(value: string | null | undefined) {
-  return value ? new Date(value) : new Date();
+const db = getFirestore(firebaseAdminApp);
+
+function toDate(value: Date | Timestamp | string | null | undefined) {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+  if (value instanceof Timestamp) return value.toDate();
+  return new Date(value);
 }
 
-function toNumber(value: number | string) {
-  return typeof value === "number" ? value : Number(value);
+function sortByNumericId<T extends { id: number }>(items: T[]) {
+  return items.sort((a, b) => a.id - b.id);
 }
 
-function assertNoError(error: unknown, operation: string) {
-  if (!error) return;
-  console.error(`[Database] ${operation} failed`, error);
-  throw new Error(`[Database] ${operation} failed`);
+async function nextId(collectionName: string): Promise<number> {
+  const counterRef = db.collection("counters").doc(collectionName);
+
+  return db.runTransaction(async (tx: Transaction) => {
+    const snapshot = await tx.get(counterRef);
+    const current = (snapshot.data()?.value as number | undefined) ?? 0;
+    const next = current + 1;
+    tx.set(counterRef, { value: next }, { merge: true });
+    return next;
+  });
 }
 
-function mapUser(row: DbUser): User {
+function mapUser(row: UserDoc): User {
   return {
-    id: toNumber(row.id),
-    openId: row.open_id,
+    id: row.id,
+    openId: row.openId,
     name: row.name,
     email: row.email,
-    loginMethod: row.login_method,
+    loginMethod: row.loginMethod,
     role: row.role,
-    createdAt: toDate(row.created_at),
-    updatedAt: toDate(row.updated_at),
-    lastSignedIn: toDate(row.last_signed_in),
+    createdAt: toDate(row.createdAt),
+    updatedAt: toDate(row.updatedAt),
+    lastSignedIn: toDate(row.lastSignedIn),
   };
 }
 
-function mapWedding(row: DbWedding) {
+function mapWedding(row: WeddingDoc) {
   return {
-    id: toNumber(row.id),
-    userId: toNumber(row.user_id),
-    inviteCode: row.invite_code,
-    brideName: row.bride_name,
-    groomName: row.groom_name,
-    weddingDate: toDate(row.wedding_date),
-    createdAt: toDate(row.created_at),
-    updatedAt: toDate(row.updated_at),
+    id: row.id,
+    userId: row.userId,
+    inviteCode: row.inviteCode,
+    brideName: row.brideName,
+    groomName: row.groomName,
+    weddingDate: toDate(row.weddingDate),
+    createdAt: toDate(row.createdAt),
+    updatedAt: toDate(row.updatedAt),
   };
 }
 
-function mapEvent(row: DbEvent) {
+function mapEvent(row: EventDoc) {
   return {
-    id: toNumber(row.id),
-    weddingId: toNumber(row.wedding_id),
+    id: row.id,
+    weddingId: row.weddingId,
     title: row.title,
     date: row.date,
     time: row.time,
     description: row.description,
-    createdAt: toDate(row.created_at),
-    updatedAt: toDate(row.updated_at),
+    createdAt: toDate(row.createdAt),
+    updatedAt: toDate(row.updatedAt),
   };
 }
 
-function mapTask(row: DbTask) {
+function mapTask(row: TaskDoc) {
   return {
-    id: toNumber(row.id),
-    weddingId: toNumber(row.wedding_id),
+    id: row.id,
+    weddingId: row.weddingId,
     text: row.text,
     completed: row.completed,
-    createdAt: toDate(row.created_at),
-    updatedAt: toDate(row.updated_at),
+    createdAt: toDate(row.createdAt),
+    updatedAt: toDate(row.updatedAt),
   };
 }
 
-function mapGuest(row: DbGuest) {
+function mapGuest(row: GuestDoc) {
   return {
-    id: toNumber(row.id),
-    weddingId: toNumber(row.wedding_id),
+    id: row.id,
+    weddingId: row.weddingId,
     name: row.name,
     side: row.side,
     role: row.role,
     confirmed: row.confirmed,
     present: row.present,
-    createdAt: toDate(row.created_at),
-    updatedAt: toDate(row.updated_at),
+    createdAt: toDate(row.createdAt),
+    updatedAt: toDate(row.updatedAt),
   };
 }
 
-function mapExpense(row: DbExpense) {
+function mapExpense(row: ExpenseDoc) {
   return {
-    id: toNumber(row.id),
-    weddingId: toNumber(row.wedding_id),
+    id: row.id,
+    weddingId: row.weddingId,
     item: row.item,
-    totalValue: row.total_value,
-    paymentMethod: row.payment_method,
-    entryValue: row.entry_value,
-    entryInstallments: row.entry_installments,
-    entryStartDate: row.entry_start_date,
+    totalValue: row.totalValue,
+    paymentMethod: row.paymentMethod,
+    entryValue: row.entryValue,
+    entryInstallments: row.entryInstallments,
+    entryStartDate: row.entryStartDate,
     installments: row.installments,
-    paymentStartDate: row.payment_start_date,
-    createdAt: toDate(row.created_at),
-    updatedAt: toDate(row.updated_at),
+    paymentStartDate: row.paymentStartDate,
+    createdAt: toDate(row.createdAt),
+    updatedAt: toDate(row.updatedAt),
   };
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+  if (!user.openId) throw new Error("User openId is required for upsert");
+
+  const existingSnapshot = await db
+    .collection("users")
+    .where("openId", "==", user.openId)
+    .limit(1)
+    .get();
+
+  const now = new Date();
+
+  if (existingSnapshot.empty) {
+    const id = await nextId("users");
+    const payload: UserDoc = {
+      id,
+      openId: user.openId,
+      name: user.name ?? null,
+      email: user.email ?? null,
+      loginMethod: user.loginMethod ?? null,
+      role: user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user"),
+      createdAt: now,
+      updatedAt: now,
+      lastSignedIn: user.lastSignedIn ? new Date(user.lastSignedIn) : now,
+    };
+
+    await db.collection("users").doc(String(id)).set(payload);
+    return;
   }
 
-  const payload: Record<string, unknown> = {
-    open_id: user.openId,
-    updated_at: new Date().toISOString(),
-  };
+  const doc = existingSnapshot.docs[0]!;
+  const payload: Partial<UserDoc> = { updatedAt: now };
 
   if (user.name !== undefined) payload.name = user.name;
   if (user.email !== undefined) payload.email = user.email;
-  if (user.loginMethod !== undefined) payload.login_method = user.loginMethod;
-  if (user.lastSignedIn !== undefined) {
-    payload.last_signed_in = new Date(user.lastSignedIn).toISOString();
-  }
-
+  if (user.loginMethod !== undefined) payload.loginMethod = user.loginMethod;
+  if (user.lastSignedIn !== undefined) payload.lastSignedIn = new Date(user.lastSignedIn);
   if (user.role !== undefined) {
     payload.role = user.role;
   } else if (user.openId === ENV.ownerOpenId) {
     payload.role = "admin";
   }
 
-  const { error } = await supabase
-    .from("users")
-    .upsert(payload, { onConflict: "open_id" });
-
-  assertNoError(error, "upsertUser");
+  await doc.ref.set(payload, { merge: true });
 }
 
 export async function getUserByOpenId(openId: string) {
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("open_id", openId)
-    .maybeSingle<DbUser>();
+  const snapshot = await db
+    .collection("users")
+    .where("openId", "==", openId)
+    .limit(1)
+    .get();
 
-  assertNoError(error, "getUserByOpenId");
-
-  return data ? mapUser(data) : undefined;
+  if (snapshot.empty) return undefined;
+  return mapUser(snapshot.docs[0]!.data() as UserDoc);
 }
 
 export async function createWedding(data: InsertWedding) {
+  const now = new Date();
   const inviteCode = nanoid(10).toUpperCase();
+  const id = await nextId("weddings");
 
-  const { data: weddingRow, error: weddingError } = await supabase
-    .from("weddings")
-    .insert({
-      user_id: data.userId,
-      invite_code: inviteCode,
-      bride_name: data.brideName,
-      groom_name: data.groomName,
-      wedding_date: new Date(data.weddingDate).toISOString(),
-    })
-    .select("*")
-    .single<DbWedding>();
+  const weddingPayload: WeddingDoc = {
+    id,
+    userId: data.userId,
+    inviteCode,
+    brideName: data.brideName,
+    groomName: data.groomName,
+    weddingDate: new Date(data.weddingDate),
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  assertNoError(weddingError, "createWedding");
+  const memberPayload: WeddingMemberDoc = {
+    userId: data.userId,
+    weddingId: id,
+    role: "owner",
+    createdAt: now,
+  };
 
-  const weddingId = toNumber(weddingRow.id);
+  const batch = db.batch();
+  batch.set(db.collection("weddings").doc(String(id)), weddingPayload);
+  batch.set(db.collection("wedding_members").doc(String(data.userId)), memberPayload);
+  await batch.commit();
 
-  const { error: memberError } = await supabase.from("wedding_members").upsert(
-    {
-      wedding_id: weddingId,
-      user_id: data.userId,
-      role: "owner",
-    },
-    { onConflict: "wedding_id,user_id" }
-  );
-
-  assertNoError(memberError, "createWedding.memberLink");
   return { success: true, inviteCode };
 }
 
 export async function getWeddingByUserId(userId: number) {
-  const { data: membership, error: membershipError } = await supabase
-    .from("wedding_members")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle<DbWeddingMember>();
+  const memberSnapshot = await db
+    .collection("wedding_members")
+    .doc(String(userId))
+    .get();
 
-  assertNoError(membershipError, "getWeddingByUserId.membership");
+  if (!memberSnapshot.exists) return null;
 
-  if (!membership) {
-    return null;
-  }
+  const member = memberSnapshot.data() as WeddingMemberDoc;
+  const weddingSnapshot = await db
+    .collection("weddings")
+    .doc(String(member.weddingId))
+    .get();
 
-  const { data, error } = await supabase
-    .from("weddings")
-    .select("*")
-    .eq("id", membership.wedding_id)
-    .maybeSingle<DbWedding>();
-
-  assertNoError(error, "getWeddingByUserId");
-
-  return data ? mapWedding(data) : null;
+  if (!weddingSnapshot.exists) return null;
+  return mapWedding(weddingSnapshot.data() as WeddingDoc);
 }
 
-export async function getWeddingInviteCodeByUserId(userId: number): Promise<string | null> {
+export async function getWeddingInviteCodeByUserId(
+  userId: number
+): Promise<string | null> {
   const wedding = await getWeddingByUserId(userId);
   if (!wedding) return null;
-
   return (wedding as { inviteCode?: string }).inviteCode ?? null;
 }
 
-export async function joinWeddingByInviteCode(userId: number, inviteCode: string): Promise<void> {
+export async function joinWeddingByInviteCode(
+  userId: number,
+  inviteCode: string
+): Promise<void> {
   const normalizedCode = inviteCode.trim().toUpperCase();
+  const weddingSnapshot = await db
+    .collection("weddings")
+    .where("inviteCode", "==", normalizedCode)
+    .limit(1)
+    .get();
 
-  const { data: wedding, error: weddingError } = await supabase
-    .from("weddings")
-    .select("id")
-    .eq("invite_code", normalizedCode)
-    .maybeSingle<{ id: number }>();
-
-  assertNoError(weddingError, "joinWeddingByInviteCode.findWedding");
-
-  if (!wedding) {
+  if (weddingSnapshot.empty) {
     throw new Error("Invite code invalid");
   }
 
-  const { error: cleanupError } = await supabase
-    .from("wedding_members")
-    .delete()
-    .eq("user_id", userId);
+  const wedding = weddingSnapshot.docs[0]!.data() as WeddingDoc;
 
-  assertNoError(cleanupError, "joinWeddingByInviteCode.cleanupMembership");
-
-  const { error: joinError } = await supabase.from("wedding_members").insert({
-    wedding_id: wedding.id,
-    user_id: userId,
+  await db.collection("wedding_members").doc(String(userId)).set({
+    userId,
+    weddingId: wedding.id,
     role: "member",
-  });
-
-  assertNoError(joinError, "joinWeddingByInviteCode.joinMembership");
+    createdAt: new Date(),
+  } as WeddingMemberDoc);
 }
 
 export async function updateWedding(id: number, data: Partial<InsertWedding>) {
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+  const payload: Partial<WeddingDoc> = {
+    updatedAt: new Date(),
   };
 
-  if (data.brideName !== undefined) payload.bride_name = data.brideName;
-  if (data.groomName !== undefined) payload.groom_name = data.groomName;
-  if (data.weddingDate !== undefined) {
-    payload.wedding_date = new Date(data.weddingDate).toISOString();
-  }
+  if (data.brideName !== undefined) payload.brideName = data.brideName;
+  if (data.groomName !== undefined) payload.groomName = data.groomName;
+  if (data.weddingDate !== undefined) payload.weddingDate = new Date(data.weddingDate);
 
-  const { error } = await supabase.from("weddings").update(payload).eq("id", id);
-
-  assertNoError(error, "updateWedding");
+  await db.collection("weddings").doc(String(id)).set(payload, { merge: true });
   return { success: true };
 }
 
 export async function createEvent(data: InsertEvent) {
-  const { error } = await supabase.from("events").insert({
-    wedding_id: data.weddingId,
+  const now = new Date();
+  const id = await nextId("events");
+
+  const payload: EventDoc = {
+    id,
+    weddingId: data.weddingId,
     title: data.title,
     date: data.date,
     time: data.time,
     description: data.description ?? null,
-  });
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  assertNoError(error, "createEvent");
+  await db.collection("events").doc(String(id)).set(payload);
   return { success: true };
 }
 
 export async function getEventsByWeddingId(weddingId: number) {
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("wedding_id", weddingId)
-    .order("date", { ascending: true })
-    .order("time", { ascending: true })
-    .returns<DbEvent[]>();
+  const snapshot = await db
+    .collection("events")
+    .where("weddingId", "==", weddingId)
+    .get();
 
-  assertNoError(error, "getEventsByWeddingId");
-
-  return (data ?? []).map(mapEvent);
+  const items = snapshot.docs.map((doc: QueryDocumentSnapshot) =>
+    mapEvent(doc.data() as EventDoc)
+  );
+  return items.sort((a: { date: string; time: string }, b: { date: string; time: string }) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.time.localeCompare(b.time);
+  });
 }
 
 export async function updateEvent(id: number, data: Partial<InsertEvent>) {
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+  const payload: Partial<EventDoc> = {
+    updatedAt: new Date(),
   };
 
   if (data.title !== undefined) payload.title = data.title;
@@ -374,94 +396,94 @@ export async function updateEvent(id: number, data: Partial<InsertEvent>) {
   if (data.time !== undefined) payload.time = data.time;
   if (data.description !== undefined) payload.description = data.description;
 
-  const { error } = await supabase.from("events").update(payload).eq("id", id);
-
-  assertNoError(error, "updateEvent");
+  await db.collection("events").doc(String(id)).set(payload, { merge: true });
   return { success: true };
 }
 
 export async function deleteEvent(id: number) {
-  const { error } = await supabase.from("events").delete().eq("id", id);
-
-  assertNoError(error, "deleteEvent");
+  await db.collection("events").doc(String(id)).delete();
   return { success: true };
 }
 
 export async function createTask(data: InsertTask) {
-  const { error } = await supabase.from("tasks").insert({
-    wedding_id: data.weddingId,
+  const now = new Date();
+  const id = await nextId("tasks");
+
+  const payload: TaskDoc = {
+    id,
+    weddingId: data.weddingId,
     text: data.text,
     completed: Boolean(data.completed),
-  });
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  assertNoError(error, "createTask");
+  await db.collection("tasks").doc(String(id)).set(payload);
   return { success: true };
 }
 
 export async function getTasksByWeddingId(weddingId: number) {
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("wedding_id", weddingId)
-    .order("id", { ascending: true })
-    .returns<DbTask[]>();
+  const snapshot = await db
+    .collection("tasks")
+    .where("weddingId", "==", weddingId)
+    .get();
 
-  assertNoError(error, "getTasksByWeddingId");
-
-  return (data ?? []).map(mapTask);
+  return sortByNumericId(
+    snapshot.docs.map((doc: QueryDocumentSnapshot) => mapTask(doc.data() as TaskDoc))
+  );
 }
 
 export async function updateTask(id: number, data: Partial<InsertTask>) {
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+  const payload: Partial<TaskDoc> = {
+    updatedAt: new Date(),
   };
 
   if (data.text !== undefined) payload.text = data.text;
   if (data.completed !== undefined) payload.completed = data.completed;
 
-  const { error } = await supabase.from("tasks").update(payload).eq("id", id);
-
-  assertNoError(error, "updateTask");
+  await db.collection("tasks").doc(String(id)).set(payload, { merge: true });
   return { success: true };
 }
 
 export async function deleteTask(id: number) {
-  const { error } = await supabase.from("tasks").delete().eq("id", id);
-
-  assertNoError(error, "deleteTask");
+  await db.collection("tasks").doc(String(id)).delete();
   return { success: true };
 }
 
 export async function createGuest(data: InsertGuest) {
-  const { error } = await supabase.from("guests").insert({
-    wedding_id: data.weddingId,
+  const now = new Date();
+  const id = await nextId("guests");
+
+  const payload: GuestDoc = {
+    id,
+    weddingId: data.weddingId,
     name: data.name,
     side: data.side,
     role: data.role,
     confirmed: Boolean(data.confirmed),
     present: Boolean(data.present),
-  });
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  assertNoError(error, "createGuest");
+  await db.collection("guests").doc(String(id)).set(payload);
   return { success: true };
 }
 
 export async function getGuestsByWeddingId(weddingId: number) {
-  const { data, error } = await supabase
-    .from("guests")
-    .select("*")
-    .eq("wedding_id", weddingId)
-    .order("id", { ascending: true })
-    .returns<DbGuest[]>();
+  const snapshot = await db
+    .collection("guests")
+    .where("weddingId", "==", weddingId)
+    .get();
 
-  assertNoError(error, "getGuestsByWeddingId");
-
-  return (data ?? []).map(mapGuest);
+  return sortByNumericId(
+    snapshot.docs.map((doc: QueryDocumentSnapshot) => mapGuest(doc.data() as GuestDoc))
+  );
 }
 
 export async function updateGuest(id: number, data: Partial<InsertGuest>) {
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+  const payload: Partial<GuestDoc> = {
+    updatedAt: new Date(),
   };
 
   if (data.name !== undefined) payload.name = data.name;
@@ -470,76 +492,75 @@ export async function updateGuest(id: number, data: Partial<InsertGuest>) {
   if (data.confirmed !== undefined) payload.confirmed = data.confirmed;
   if (data.present !== undefined) payload.present = data.present;
 
-  const { error } = await supabase.from("guests").update(payload).eq("id", id);
-
-  assertNoError(error, "updateGuest");
+  await db.collection("guests").doc(String(id)).set(payload, { merge: true });
   return { success: true };
 }
 
 export async function deleteGuest(id: number) {
-  const { error } = await supabase.from("guests").delete().eq("id", id);
-
-  assertNoError(error, "deleteGuest");
+  await db.collection("guests").doc(String(id)).delete();
   return { success: true };
 }
 
 export async function createExpense(data: InsertExpense) {
-  const { error } = await supabase.from("expenses").insert({
-    wedding_id: data.weddingId,
-    item: data.item,
-    total_value: String(data.totalValue),
-    payment_method: data.paymentMethod,
-    entry_value: String(data.entryValue),
-    entry_installments: data.entryInstallments,
-    entry_start_date: data.entryStartDate,
-    installments: data.installments,
-    payment_start_date: data.paymentStartDate,
-  });
+  const now = new Date();
+  const id = await nextId("expenses");
 
-  assertNoError(error, "createExpense");
+  const payload: ExpenseDoc = {
+    id,
+    weddingId: data.weddingId,
+    item: data.item,
+    totalValue: String(data.totalValue),
+    paymentMethod: data.paymentMethod,
+    entryValue: String(data.entryValue),
+    entryInstallments: data.entryInstallments,
+    entryStartDate: data.entryStartDate,
+    installments: data.installments,
+    paymentStartDate: data.paymentStartDate,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await db.collection("expenses").doc(String(id)).set(payload);
   return { success: true };
 }
 
 export async function getExpensesByWeddingId(weddingId: number) {
-  const { data, error } = await supabase
-    .from("expenses")
-    .select("*")
-    .eq("wedding_id", weddingId)
-    .order("payment_start_date", { ascending: true })
-    .returns<DbExpense[]>();
+  const snapshot = await db
+    .collection("expenses")
+    .where("weddingId", "==", weddingId)
+    .get();
 
-  assertNoError(error, "getExpensesByWeddingId");
-
-  return (data ?? []).map(mapExpense);
+  return snapshot.docs
+    .map((doc: QueryDocumentSnapshot) => mapExpense(doc.data() as ExpenseDoc))
+    .sort(
+      (a: { paymentStartDate: string }, b: { paymentStartDate: string }) =>
+        a.paymentStartDate.localeCompare(b.paymentStartDate)
+    );
 }
 
 export async function updateExpense(id: number, data: Partial<InsertExpense>) {
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+  const payload: Partial<ExpenseDoc> = {
+    updatedAt: new Date(),
   };
 
   if (data.item !== undefined) payload.item = data.item;
-  if (data.totalValue !== undefined) payload.total_value = String(data.totalValue);
-  if (data.paymentMethod !== undefined) payload.payment_method = data.paymentMethod;
-  if (data.entryValue !== undefined) payload.entry_value = String(data.entryValue);
+  if (data.totalValue !== undefined) payload.totalValue = String(data.totalValue);
+  if (data.paymentMethod !== undefined) payload.paymentMethod = data.paymentMethod;
+  if (data.entryValue !== undefined) payload.entryValue = String(data.entryValue);
   if (data.entryInstallments !== undefined) {
-    payload.entry_installments = data.entryInstallments;
+    payload.entryInstallments = data.entryInstallments;
   }
-  if (data.entryStartDate !== undefined) payload.entry_start_date = data.entryStartDate;
+  if (data.entryStartDate !== undefined) payload.entryStartDate = data.entryStartDate;
   if (data.installments !== undefined) payload.installments = data.installments;
   if (data.paymentStartDate !== undefined) {
-    payload.payment_start_date = data.paymentStartDate;
+    payload.paymentStartDate = data.paymentStartDate;
   }
 
-  const { error } = await supabase.from("expenses").update(payload).eq("id", id);
-
-  assertNoError(error, "updateExpense");
+  await db.collection("expenses").doc(String(id)).set(payload, { merge: true });
   return { success: true };
 }
 
 export async function deleteExpense(id: number) {
-  const { error } = await supabase.from("expenses").delete().eq("id", id);
-
-  assertNoError(error, "deleteExpense");
+  await db.collection("expenses").doc(String(id)).delete();
   return { success: true };
 }

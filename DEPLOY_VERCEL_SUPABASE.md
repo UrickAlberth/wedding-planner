@@ -1,22 +1,26 @@
-# Deploy Vercel + Supabase
+# Deploy Vercel + Firebase (Auth + Firestore)
 
-## 1) Banco no Supabase
+## 1) Banco no Firestore
 
-1. Crie um projeto no Supabase.
-2. Abra SQL Editor e rode o conteúdo de supabase/schema.sql.
-3. Se o banco ja existe com schema legado (agenda_items, tasks.done, guests.owner_side etc), rode tambem supabase/migrate_legacy_schema_to_shared.sql.
-4. Em Project Settings > API, copie:
-   - Project URL
-   - service_role key
+1. Crie (ou use) um projeto no Firebase.
+2. Em Firestore Database, crie o banco em modo Native.
+3. Em Authentication > Sign-in method, habilite Email/Password.
+4. Em Authentication > Settings > Authorized domains, adicione localhost e seu dominio da Vercel.
 
 ## 2) Variaveis na Vercel
 
 Configure no projeto da Vercel (Production/Preview):
 
-- SUPABASE_URL
-- SUPABASE_SERVICE_ROLE_KEY
-- VITE_SUPABASE_URL
-- VITE_SUPABASE_ANON_KEY
+- VITE_FIREBASE_API_KEY
+- VITE_FIREBASE_AUTH_DOMAIN
+- VITE_FIREBASE_PROJECT_ID
+- VITE_FIREBASE_STORAGE_BUCKET
+- VITE_FIREBASE_MESSAGING_SENDER_ID
+- VITE_FIREBASE_APP_ID
+- VITE_FIREBASE_MEASUREMENT_ID (opcional)
+- FIREBASE_PROJECT_ID
+- FIREBASE_CLIENT_EMAIL
+- FIREBASE_PRIVATE_KEY
 - OWNER_OPEN_ID
 - BUILT_IN_FORGE_API_URL (se usar)
 - BUILT_IN_FORGE_API_KEY (se usar)
@@ -31,11 +35,13 @@ Este repositorio ja possui configuracao de Vercel em vercel.json:
   - /api/* -> /api
   - /* -> /index.html
 
-## 4) Supabase Auth
+## 4) Firebase Admin (backend)
 
-1. No painel Supabase, habilite o provider Email.
-2. Em Authentication > URL Configuration, adicione a URL de producao no Site URL.
-3. Em Authentication > URL Configuration, adicione Preview URLs da Vercel se desejar testar previews.
+1. Em Project settings > Service accounts, gere uma chave privada e configure:
+  - FIREBASE_PROJECT_ID
+  - FIREBASE_CLIENT_EMAIL
+  - FIREBASE_PRIVATE_KEY (com quebras de linha escapadas como \n)
+2. Garanta que a conta de servico tenha permissao para Firestore.
 
 ## 5) Publicacao
 

@@ -1,10 +1,9 @@
 import { ForbiddenError } from "../../shared/_core/errors";
 import type { Request } from "express";
-import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
-import { supabase } from "./supabase";
+import { firebaseAdminAuth } from "./firebaseAdmin";
 class SDKServer {
   private getBearerToken(req: Request): string | null {
     const header = req.get("authorization");
@@ -21,24 +20,19 @@ class SDKServer {
       throw ForbiddenError("Missing bearer token");
     }
 
-    const authClient = supabase.auth as unknown as {
-      getUser: (
-        jwt: string
-      ) => Promise<{ data: { user: SupabaseAuthUser | null }; error: unknown }>;
-    };
-
-    const { data: authData, error: authError } = await authClient.getUser(token);
-    if (authError || !authData.user) {
-      throw ForbiddenError("Invalid Supabase token");
+    const decodedToken = await firebaseAdminAuth
+      .verifyIdToken(token)
+      .catch(() => null);
+    if (!decodedToken) {
+      throw ForbiddenError("Invalid Firebase token");
     }
 
-    const supabaseUser = authData.user;
-    const sessionUserId = supabaseUser.id;
+    const sessionUserId = decodedToken.uid;
     const displayName =
-      (supabaseUser.user_metadata?.name as string | undefined) ??
-      (supabaseUser.user_metadata?.full_name as string | undefined) ??
-      supabaseUser.email ??
+      (decodedToken.name as string | undefined) ??
+      (decodedToken.email as string | undefined) ??
       "User";
+    const email = (decodedToken.email as string | undefined) ?? null;
     const signedInAt = new Date();
 
     let user = await db.getUserByOpenId(sessionUserId);
@@ -47,8 +41,8 @@ class SDKServer {
       await db.upsertUser({
         openId: sessionUserId,
         name: displayName,
-        email: supabaseUser.email ?? null,
-        loginMethod: "supabase",
+        email,
+        loginMethod: "firebase",
         role: sessionUserId === ENV.ownerOpenId ? "admin" : "user",
         lastSignedIn: signedInAt,
       });

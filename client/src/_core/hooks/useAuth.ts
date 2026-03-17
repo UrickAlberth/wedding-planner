@@ -1,7 +1,8 @@
 import { LOGIN_PATH } from "@/const";
-import { supabase } from "@/lib/supabase";
+import { firebaseAuth } from "@/lib/firebase";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
+import { signOut } from "firebase/auth";
 import { useCallback, useEffect, useMemo } from "react";
 
 type UseAuthOptions = {
@@ -27,7 +28,7 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut(firebaseAuth);
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
       if (
