@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from '@/_core/hooks/useAuth';
-import { LOGIN_PATH } from '@/const';
 import AppHeader from '@/components/AppHeader';
 import CountdownSection from '@/components/CountdownSection';
 import SideNav, { Section } from '@/components/SideNav';
@@ -32,28 +31,6 @@ function AppContent() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: 'oklch(0.45 0.07 20)' }}></div>
           <p style={{ color: 'oklch(0.55 0.03 40)' }}>Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'oklch(0.97 0.012 75)' }}>
-        <div className="text-center max-w-md">
-          <h1 className="font-display text-3xl font-bold mb-4" style={{ color: 'oklch(0.28 0.04 40)' }}>
-            Bem-vindo ao Planejador de Casamento
-          </h1>
-          <p className="mb-6" style={{ color: 'oklch(0.55 0.03 40)' }}>
-            Faça login para acessar seu painel de organização do casamento.
-          </p>
-          <a
-            href={LOGIN_PATH}
-            className="inline-block px-8 py-3 rounded-lg font-medium transition-all hover:opacity-90"
-            style={{ backgroundColor: 'oklch(0.45 0.07 20)', color: 'oklch(0.98 0.005 75)' }}
-          >
-            Fazer Login
-          </a>
         </div>
       </div>
     );
