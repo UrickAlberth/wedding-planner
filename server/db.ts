@@ -94,7 +94,19 @@ type ExpenseDoc = {
   updatedAt: Date | Timestamp;
 };
 
-const db = getFirestore(getFirebaseAdminApp());
+let firestoreInstance: ReturnType<typeof getFirestore> | null = null;
+
+function getDb() {
+  if (firestoreInstance) return firestoreInstance;
+  firestoreInstance = getFirestore(getFirebaseAdminApp());
+  return firestoreInstance;
+}
+
+const db: ReturnType<typeof getFirestore> = new Proxy({} as ReturnType<typeof getFirestore>, {
+  get(_target, prop) {
+    return Reflect.get(getDb(), prop);
+  },
+});
 
 function toDate(value: Date | Timestamp | string | null | undefined) {
   if (!value) return new Date();
