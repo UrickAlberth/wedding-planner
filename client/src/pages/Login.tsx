@@ -1,18 +1,19 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { firebaseAuth } from "@/lib/firebase";
 import {
+  UserCredential,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
 } from "firebase/auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 
 type AuthMode = "login" | "register";
 
 export default function Login() {
   const [, navigate] = useLocation();
-  const { refresh } = useAuth();
+  const { refresh, user, loading: authLoading } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -21,13 +22,21 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) return;
+    navigate("/");
+  }, [authLoading, navigate, user]);
+
   const submit = async () => {
     setLoading(true);
     setError(null);
 
     try {
+      let credentials: UserCredential;
+
       if (mode === "register") {
-        const credentials = await createUserWithEmailAndPassword(
+        credentials = await createUserWithEmailAndPassword(
           firebaseAuth,
           email,
           password
@@ -37,14 +46,15 @@ export default function Login() {
           await updateProfile(credentials.user, { displayName: name.trim() });
         }
       } else {
-        await signInWithEmailAndPassword(
+        credentials = await signInWithEmailAndPassword(
           firebaseAuth,
           email,
           password
         );
       }
 
-      await refresh();
+      await credentials.user.getIdToken(true);
+      await refresh().catch(() => null);
       navigate("/");
     } catch (e) {
       const message = e instanceof Error ? e.message : "Falha na autenticacao";

@@ -9,6 +9,25 @@ import { LOGIN_PATH } from "./const";
 import { firebaseAuth } from "./lib/firebase";
 import "./index.css";
 
+const unresolvedViteEnvPattern = /^%VITE_[A-Z0-9_]+%$/;
+
+function setupAnalytics() {
+  const endpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+  const websiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+
+  if (!endpoint || !websiteId) return;
+  if (unresolvedViteEnvPattern.test(endpoint)) return;
+  if (unresolvedViteEnvPattern.test(websiteId)) return;
+
+  const script = document.createElement("script");
+  script.defer = true;
+  script.src = `${endpoint.replace(/\/$/, "")}/umami`;
+  script.setAttribute("data-website-id", websiteId);
+  document.body.appendChild(script);
+}
+
+setupAnalytics();
+
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

@@ -6,15 +6,21 @@ function getFirebasePrivateKey() {
   return ENV.firebasePrivateKey.replace(/\\n/g, "\n");
 }
 
-function getFirebaseApp() {
+export function hasFirebaseAdminCredentials() {
+  return Boolean(
+    ENV.firebaseProjectId && ENV.firebaseClientEmail && ENV.firebasePrivateKey
+  );
+}
+
+export function getFirebaseAdminApp() {
   if (getApps().length > 0) {
     return getApps()[0]!;
   }
 
-  if (!ENV.firebaseProjectId || !ENV.firebaseClientEmail || !ENV.firebasePrivateKey) {
-    throw new Error(
-      "Missing Firebase Admin credentials. Configure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY."
-    );
+  if (!hasFirebaseAdminCredentials()) {
+    return initializeApp({
+      projectId: ENV.firebaseProjectId || undefined,
+    });
   }
 
   return initializeApp({
@@ -26,5 +32,6 @@ function getFirebaseApp() {
   });
 }
 
-export const firebaseAdminApp = getFirebaseApp();
-export const firebaseAdminAuth = getAuth(firebaseAdminApp);
+export function getFirebaseAdminAuth() {
+  return getAuth(getFirebaseAdminApp());
+}

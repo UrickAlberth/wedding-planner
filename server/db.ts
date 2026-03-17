@@ -15,7 +15,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { getFirestore } from "firebase-admin/firestore";
 import { nanoid } from "nanoid";
 import { ENV } from "./_core/env";
-import { firebaseAdminApp } from "./_core/firebaseAdmin";
+import { getFirebaseAdminApp } from "./_core/firebaseAdmin";
 
 type UserDoc = {
   id: number;
@@ -94,7 +94,7 @@ type ExpenseDoc = {
   updatedAt: Date | Timestamp;
 };
 
-const db = getFirestore(firebaseAdminApp);
+const db = getFirestore(getFirebaseAdminApp());
 
 function toDate(value: Date | Timestamp | string | null | undefined) {
   if (!value) return new Date();

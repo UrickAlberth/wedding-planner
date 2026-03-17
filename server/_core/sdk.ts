@@ -3,7 +3,7 @@ import type { Request } from "express";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
-import { firebaseAdminAuth } from "./firebaseAdmin";
+import { getFirebaseAdminAuth } from "./firebaseAdmin";
 class SDKServer {
   private getBearerToken(req: Request): string | null {
     const header = req.get("authorization");
@@ -20,7 +20,7 @@ class SDKServer {
       throw ForbiddenError("Missing bearer token");
     }
 
-    const decodedToken = await firebaseAdminAuth
+    const decodedToken = await getFirebaseAdminAuth()
       .verifyIdToken(token)
       .catch(() => null);
     if (!decodedToken) {
